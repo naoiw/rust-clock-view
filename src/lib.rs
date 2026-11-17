@@ -41,7 +41,13 @@ fn format_time(hours: u32, minutes: u32) -> String {
 
 fn format_date(year: u32, month: u32, day: u32, weekday: u32) -> String {
     const WEEKDAYS: [&str; 7] = [
-        "日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日",
+        "日曜日",
+        "月曜日",
+        "火曜日",
+        "水曜日",
+        "木曜日",
+        "金曜日",
+        "土曜日",
     ];
     let weekday = WEEKDAYS.get(weekday as usize).copied().unwrap_or("");
     format!("{year}年{month}月{day}日{weekday}")
@@ -91,8 +97,7 @@ fn advance_particle(particle: &mut Particle, elapsed_ms: f64) {
 fn create_particles(geometry: Geometry, hue: f64) -> Vec<Particle> {
     (0..PARTICLE_COUNT)
         .map(|i| {
-            let angle = TAU * i as f64 / PARTICLE_COUNT as f64
-                - FRAC_PI_2
+            let angle = TAU * i as f64 / PARTICLE_COUNT as f64 - FRAC_PI_2
                 + (js_sys::Math::random() - 0.5) * 0.28;
             let speed = 55.0 + js_sys::Math::random() * 115.0;
             Particle {
@@ -206,10 +211,7 @@ fn draw_face(
 
 fn draw_particle(ctx: &CanvasRenderingContext2d, particle: &Particle, radius: f64) {
     let opacity = (1.0 - particle.age / particle.life).max(0.0);
-    ctx.set_fill_style_str(&format!(
-        "hsla({}, 88%, 72%, {})",
-        particle.hue, opacity
-    ));
+    ctx.set_fill_style_str(&format!("hsla({}, 88%, 72%, {})", particle.hue, opacity));
     ctx.begin_path();
     let _ = ctx.arc(particle.x, particle.y, (radius * 0.012).max(1.5), 0.0, TAU);
     ctx.fill();
@@ -327,12 +329,16 @@ impl ClockApp {
             self.particles.clear();
         } else {
             if should_explode(self.last_minute, minute_key) {
-                self.particles.extend(create_particles(geometry, time_hue(time.hours, time.minutes)));
+                self.particles.extend(create_particles(
+                    geometry,
+                    time_hue(time.hours, time.minutes),
+                ));
             }
             for particle in &mut self.particles {
                 advance_particle(particle, elapsed_ms);
             }
-            self.particles.retain(|particle| particle.age < particle.life);
+            self.particles
+                .retain(|particle| particle.age < particle.life);
             for particle in &self.particles {
                 draw_particle(&self.ctx, particle, geometry.radius);
             }
