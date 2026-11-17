@@ -43,6 +43,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
 
       - uses: taiki-e/install-action@v2
         with:
@@ -51,13 +52,17 @@ jobs:
       - name: Test and build production
         working-directory: production
         run: |
-          cargo test --lib
+          cargo fmt --all -- --check
+          cargo clippy --locked --all-targets -- -D warnings
+          cargo test --locked --lib
           bash scripts/build.sh
 
       - name: Test and build preview
         working-directory: preview
         run: |
-          cargo test --lib
+          cargo fmt --all -- --check
+          cargo clippy --locked --all-targets -- -D warnings
+          cargo test --locked --lib
           bash scripts/build.sh
 
       - name: Combine sites
