@@ -7,6 +7,7 @@
 ```text
 index.html                 画面の構造（Pages のルートエントリ）
 Cargo.toml                 Rustクレートと依存関係
+Cargo.lock                 Rust依存関係を固定するロックファイル（Git管理対象）
 src/lib.rs                 Rustの時計ロジック・Canvas描画・単体テスト
 src/main.js                wasmモジュール読み込みとブラウザの描画ループ
 src/styles.css             レイアウトと文字組み
@@ -35,13 +36,20 @@ dist/                      ビルド生成物（Git管理対象外）
 
 ## ビルド
 
-`bash scripts/build.sh` は `wasm-pack build --release --target web --out-dir dist/pkg` を実行し、`dist/app.js` と `dist/styles.css` を追加します。WebAssembly ローダーは `dist/app.js` に対して相対パスで参照するため、本番用パス `/` とプレビュー用 `/develop/` の両方で同じファイル構成を使えます。
+`bash scripts/build.sh` は `wasm-pack build --release --target web --out-dir dist/pkg -- --locked` を実行し、`dist/app.js` と `dist/styles.css` を追加します。WebAssembly ローダーは `dist/app.js` に対して相対パスで参照するため、本番用パス `/` とプレビュー用 `/develop/` の両方で同じファイル構成を使えます。
 
 `file://` ではES modules・wasmの読み込みに制約があるため、ローカルはHTTPサーバーを使用します。
 
+## 品質チェックと再現性
+
+- `Cargo.lock` は必ずコミットし、`Cargo.toml` と合わせて管理します。依存関係を変更するときだけ `cargo update` などで更新します。
+- `cargo fmt --all -- --check` はRustソースの整形違反を検出します。修正時はローカルで `cargo fmt --all` を実行します。
+- `cargo clippy --locked --all-targets -- -D warnings` は全ターゲットのlint警告をエラーとして扱います。
+- `cargo test --locked --lib` とWebAssemblyビルドもロックされた依存関係で実行します。依存解決によってロックファイルの更新が必要になった場合は失敗します。
+
 ## CI・公開パイプライン
 
-- `.github/workflows/validate-develop.yml`：developへのpush、main/develop宛PRでRust単体テストとWebAssemblyビルドを実行。PRでは公開しません。
+- `.github/workflows/validate-develop.yml`：developへのpush、main/develop宛PRでrustfmt・clippy・Rust単体テスト・WebAssemblyビルドを実行。PRでは公開しません。
 - `.github/workflows/deploy-pages.yml`：mainへのpush、検証成功したdevelopのpushを受けて公開します。検証失敗・PRからの結果では公開しません。
 - `workflow_run` イベントの場合は検証済みのdevelopコミットSHAをcheckoutし、mainとdevelopの双方を再テスト・ビルドします。
 - GitHub Pagesは **`github-pages` 環境1つのみ**。公開ワークフローはmain側から実行します。
@@ -57,5 +65,5 @@ GitHub Settings → Pages → Source はGitHub Actionsにします。`workflow_r
 ## リポジトリ直下のファイル
 
 - `index.html` はルートURLのGitHub Pages配信に必要なので `src/` へ移しません。
-- `Cargo.toml` はRust依存関係、`scripts/build.sh` はビルド方式を定義します。
+- `Cargo.toml` はRust依存関係、`Cargo.lock` はバージョン固定、`scripts/build.sh` はビルド方式を定義します。
 - `LICENSE` は公開リポジトリのライセンス、`README.md` はセットアップ、`docs/` は詳細設計です。
