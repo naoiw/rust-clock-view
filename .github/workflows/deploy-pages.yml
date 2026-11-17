@@ -1,0 +1,88 @@
+name: Deploy to GitHub Pages
+
+# Only this workflow deploys; validated develop is published beside production.
+on:
+  push:
+    branches: [main]
+  workflow_run:
+    workflows: [Validate develop]
+    types: [completed]
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.ref_name == 'main') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout production
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: production
+
+      - name: Checkout validated preview revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || 'develop' }}
+          path: preview
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: Test and build production
+        working-directory: production
+        run: |
+          cargo test --lib
+          bash scripts/build.sh
+
+      - name: Test and build preview
+        working-directory: preview
+        run: |
+          cargo test --lib
+          bash scripts/build.sh
+
+      - name: Combine sites
+        run: |
+          mkdir -p publish/dist publish/develop/dist
+          cp production/index.html publish/index.html
+          cp -a production/dist/. publish/dist/
+          cp preview/index.html publish/develop/index.html
+          cp -a preview/dist/. publish/develop/dist/
+          touch publish/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: publish
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
