@@ -44,7 +44,7 @@ fn format_date(year: u32, month: u32, day: u32, weekday: u32) -> String {
         "日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日",
     ];
     let weekday = WEEKDAYS.get(weekday as usize).copied().unwrap_or("");
-    format!("{year}年{month}月{day}日 {weekday}")
+    format!("{year}年{month}月{day}日{weekday}")
 }
 
 fn time_hue(hours: u32, minutes: u32) -> f64 {
@@ -406,6 +406,6 @@ mod tests {
 
     #[test]
     fn japanese_date_format_is_stable() {
-        assert_eq!(format_date(2026, 11, 17, 2), "2026年11月17日 火曜日");
+        assert_eq!(format_date(2026, 11, 17, 2), "2026年11月17日火曜日");
     }
 }
