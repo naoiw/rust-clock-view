@@ -21,11 +21,21 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
         with:
           tool: wasm-pack
       - name: Unit tests
         run: cargo test --lib
+      - name: Print generated Cargo.lock for initial bootstrap
+        run: |
+          echo "CARGO_LOCK_BEGIN"
+          cat Cargo.lock
+          echo "CARGO_LOCK_END"
+      - name: Rust formatting
+        run: cargo fmt --all -- --check
+      - name: Clippy lints
+        run: cargo clippy --all-targets -- -D warnings
       - name: Build browser WebAssembly
         run: bash scripts/build.sh
